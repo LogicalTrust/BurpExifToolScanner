@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,7 +41,7 @@ public class ExifToolScanner implements IScannerCheck {
 	}
 	
 	private List<IScanIssue> exiftoolScan(IHttpRequestResponse baseRequestResponse, IResponseInfo responseInfo) throws IOException {
-		Process process = new ProcessBuilder(new String[] { "exiftool", "-S", "-" }).start();
+		Process process = new ProcessBuilder(new String[] { "exiftool", "-m", "-q", "-q", "-S", "-E", "-sort", "-" }).start();
 		
 		OutputStream outputStream = process.getOutputStream();
 		outputStream.write(baseRequestResponse.getResponse(), responseInfo.getBodyOffset(), baseRequestResponse.getResponse().length - responseInfo.getBodyOffset());
@@ -61,8 +62,8 @@ public class ExifToolScanner implements IScannerCheck {
 		
 		if (details.length() > 0) {
 			details.insert(0, "<ul>").append("</ul>");
-			ExifToolScanIssue i = new ExifToolScanIssue(helpers.analyzeRequest(baseRequestResponse.getHttpService(), 
-					baseRequestResponse.getRequest()).getUrl(), 
+			URL url = helpers.analyzeRequest(baseRequestResponse.getHttpService(), baseRequestResponse.getRequest()).getUrl();
+			ExifToolScanIssue i = new ExifToolScanIssue(url, 
 					details.toString(), 
 					new IHttpRequestResponse[] { baseRequestResponse }, 
 					baseRequestResponse.getHttpService(),
@@ -81,7 +82,7 @@ public class ExifToolScanner implements IScannerCheck {
 
 	@Override
 	public int consolidateDuplicateIssues(IScanIssue existingIssue, IScanIssue newIssue) {
-		return 0;
+		return existingIssue.getIssueDetail().equals(newIssue.getIssueDetail()) ? -1 : 0;
 	}
 
 }

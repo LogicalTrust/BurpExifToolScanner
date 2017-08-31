@@ -16,7 +16,6 @@ public class ExifToolScanIssue implements IScanIssue {
 
 	public ExifToolScanIssue(URL url, String issueDetail, IHttpRequestResponse[] httpMessages,
 			IHttpService httpService, String issueName) {
-		super();
 		this.url = url;
 		this.issueDetail = issueDetail;
 		this.httpMessages = httpMessages;
@@ -36,7 +35,7 @@ public class ExifToolScanIssue implements IScanIssue {
 
 	@Override
 	public int getIssueType() {
-		return 0;
+		return 0x08000000;
 	}
 
 	@Override

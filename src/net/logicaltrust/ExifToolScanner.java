@@ -1,110 +1,55 @@
 package net.logicaltrust;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 import burp.IExtensionHelpers;
 import burp.IHttpRequestResponse;
-import burp.IResponseInfo;
 import burp.IScanIssue;
 import burp.IScannerCheck;
 import burp.IScannerInsertionPoint;
 
 public class ExifToolScanner implements IScannerCheck {
 
-	private static final List<String> TYPES_TO_IGNORE = Arrays.asList("HTML", "JSON", "script", "CSS");
 	private static final String FILETYPE_KEY = "FileType: ";
-	private static final List<String> RESULT_LINES_TO_IGNORE = Arrays.asList("ExifToolVersion:", "Error:", "Directory:", "FileAccessDate:", "FileInodeChangeDate:", "FileModifyDate:", "FileName:", "FilePermissions:", "FileSize");
-	private static final String UL_TAG = "<ul>";
-	private static final FileAttribute<Set<PosixFilePermission>> TEMP_FILE_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
-	private static final FileAttribute<Set<PosixFilePermission>> TEMP_DIR_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
 
 	private final IExtensionHelpers helpers;
-	private final PrintWriter writer;
-	private final BufferedReader reader;
-	private final Path tempDirectory;
+	private final ExifToolProcess exiftoolProcess;
+	private final PrintWriter stderr;
 
 	public ExifToolScanner(IExtensionHelpers helpers, ExifToolProcess exiftoolProcess, PrintWriter stderr) throws ExtensionInitException {
 		this.helpers = helpers;
-		this.reader = exiftoolProcess.getReader();
-		this.writer = exiftoolProcess.getWriter();
-		try {
-			tempDirectory = Files.createTempDirectory("burpexiftool", TEMP_DIR_PERMISSIONS);
-			tempDirectory.toFile().deleteOnExit();
-		} catch (IOException e) {
-			throw new ExtensionInitException("Cannot create temporary directory", e);
-		}
+		this.exiftoolProcess = exiftoolProcess;
+		this.stderr = stderr;
 	}
 
 	@Override
 	public List<IScanIssue> doPassiveScan(IHttpRequestResponse baseRequestResponse) {
-		IResponseInfo responseInfo = helpers.analyzeResponse(baseRequestResponse.getResponse());
-		List<IScanIssue> issues = null;
-		if (!TYPES_TO_IGNORE.contains(responseInfo.getStatedMimeType()) 
-				&& !TYPES_TO_IGNORE.contains(responseInfo.getInferredMimeType())) {
-			try {
-				issues = exiftoolScan(baseRequestResponse, responseInfo);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		return issues;
-	}
-	
-	private boolean isLineToIgnore(String line) {
-		for (String lineToIgnore : RESULT_LINES_TO_IGNORE) {
-			if (line.startsWith(lineToIgnore)) {
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	private List<IScanIssue> exiftoolScan(IHttpRequestResponse baseRequestResponse, IResponseInfo responseInfo) throws IOException {
-		Path tmp = Files.createTempFile(tempDirectory, "file", "", TEMP_FILE_PERMISSIONS);
-		OutputStream tmpOs = Files.newOutputStream(tmp);
-		tmpOs.write(baseRequestResponse.getResponse(), responseInfo.getBodyOffset(), baseRequestResponse.getResponse().length - responseInfo.getBodyOffset());
-		tmpOs.close();
-		
-		writer.write("-m\n-S\n-E\n-sort\n");
-		writer.write(tmp.toString());
-		writer.write("\n-execute\n");
-		writer.flush();
-		
-		StringBuilder details = new StringBuilder(UL_TAG);
-		String line;
-		String filetype = "";
-		while ((line = reader.readLine()) != null && !"{ready}".equals(line)) {
-			if (!isLineToIgnore(line)) {
-				details.append("<li>").append(line).append("</li>");
-				if (line.startsWith(FILETYPE_KEY)) {
-					filetype = " in " + line.substring(FILETYPE_KEY.length());
+		try {
+			List<String> metadata = exiftoolProcess.readMetadataHtml(baseRequestResponse.getResponse());
+			if (!metadata.isEmpty()) {
+				URL url = helpers.analyzeRequest(baseRequestResponse.getHttpService(), baseRequestResponse.getRequest()).getUrl();
+				StringBuilder list = new StringBuilder("<ul>");
+				String filetype = "";
+				for (String line : metadata) {
+					list.append("<li>").append(line).append("</li>");
+					if (line.startsWith(FILETYPE_KEY)) {
+						filetype = " in " + line.substring(FILETYPE_KEY.length());
+					}
 				}
+				ExifToolScanIssue i = new ExifToolScanIssue(url, 
+						list.toString(), 
+						new IHttpRequestResponse[] { baseRequestResponse }, 
+						baseRequestResponse.getHttpService(),
+						"Metadata" + filetype + " (ExifTool)");
+				return Arrays.asList(i);
+				
 			}
-		}
-		
-		Files.deleteIfExists(tmp);
-		
-		if (details.length() > UL_TAG.length()) {
-			details.append("</ul>");
-			URL url = helpers.analyzeRequest(baseRequestResponse.getHttpService(), baseRequestResponse.getRequest()).getUrl();
-			ExifToolScanIssue i = new ExifToolScanIssue(url, 
-					details.toString(), 
-					new IHttpRequestResponse[] { baseRequestResponse }, 
-					baseRequestResponse.getHttpService(),
-					"Metadata" + filetype + " (ExifTool)");
-			return Arrays.asList(i);
+		} catch (IOException e) {
+			e.printStackTrace(stderr);
 		}
 		
 		return null;

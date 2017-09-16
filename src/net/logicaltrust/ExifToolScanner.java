@@ -8,9 +8,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import burp.IExtensionHelpers;
 import burp.IHttpRequestResponse;
@@ -24,10 +27,14 @@ public class ExifToolScanner implements IScannerCheck {
 	private static final List<String> TYPES_TO_IGNORE = Arrays.asList("HTML", "JSON", "script", "CSS");
 	private static final String FILETYPE_KEY = "FileType: ";
 	private static final List<String> RESULT_LINES_TO_IGNORE = Arrays.asList("ExifToolVersion:", "Error:", "Directory:", "FileAccessDate:", "FileInodeChangeDate:", "FileModifyDate:", "FileName:", "FilePermissions:", "FileSize");
+	private static final String UL_TAG = "<ul>";
+	private static final FileAttribute<Set<PosixFilePermission>> TEMP_FILE_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
+	private static final FileAttribute<Set<PosixFilePermission>> TEMP_DIR_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
 
 	private final IExtensionHelpers helpers;
 	private OutputStream outputStream;
 	private BufferedReader reader;
+	private Path tempDirectory;
 
 	public ExifToolScanner(IExtensionHelpers helpers) {
 		this.helpers = helpers;
@@ -35,6 +42,8 @@ public class ExifToolScanner implements IScannerCheck {
 			Process process = new ProcessBuilder(new String[] { "exiftool", "-stay_open", "True", "-@", "-" }).start();
 			outputStream = process.getOutputStream();
 			reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			tempDirectory = Files.createTempDirectory("burpexiftool", TEMP_DIR_PERMISSIONS);
+			tempDirectory.toFile().deleteOnExit();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -65,7 +74,7 @@ public class ExifToolScanner implements IScannerCheck {
 	}
 	
 	private List<IScanIssue> exiftoolScan(IHttpRequestResponse baseRequestResponse, IResponseInfo responseInfo) throws IOException {
-		Path tmp = Files.createTempFile("brpexiftool", "", PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+		Path tmp = Files.createTempFile(tempDirectory, "file", "", TEMP_FILE_PERMISSIONS);
 		OutputStream tmpOs = Files.newOutputStream(tmp);
 		tmpOs.write(baseRequestResponse.getResponse(), responseInfo.getBodyOffset(), baseRequestResponse.getResponse().length - responseInfo.getBodyOffset());
 		tmpOs.close();
@@ -75,7 +84,7 @@ public class ExifToolScanner implements IScannerCheck {
 		outputStream.write("\n-execute\n".getBytes(StandardCharsets.UTF_8));
 		outputStream.flush();
 		
-		StringBuilder details = new StringBuilder();
+		StringBuilder details = new StringBuilder(UL_TAG);
 		String line;
 		String filetype = "";
 		while ((line = reader.readLine()) != null && !"{ready}".equals(line)) {
@@ -89,8 +98,8 @@ public class ExifToolScanner implements IScannerCheck {
 		
 		Files.deleteIfExists(tmp);
 		
-		if (details.length() > 0) {
-			details.insert(0, "<ul>").append("</ul>");
+		if (details.length() > UL_TAG.length()) {
+			details.append("</ul>");
 			URL url = helpers.analyzeRequest(baseRequestResponse.getHttpService(), baseRequestResponse.getRequest()).getUrl();
 			ExifToolScanIssue i = new ExifToolScanIssue(url, 
 					details.toString(), 

@@ -2,10 +2,9 @@ package net.logicaltrust;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
@@ -32,20 +31,19 @@ public class ExifToolScanner implements IScannerCheck {
 	private static final FileAttribute<Set<PosixFilePermission>> TEMP_DIR_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
 
 	private final IExtensionHelpers helpers;
-	private OutputStream outputStream;
-	private BufferedReader reader;
-	private Path tempDirectory;
+	private final PrintWriter writer;
+	private final BufferedReader reader;
+	private final Path tempDirectory;
 
-	public ExifToolScanner(IExtensionHelpers helpers) {
+	public ExifToolScanner(IExtensionHelpers helpers, ExifToolProcess exiftoolProcess, PrintWriter stderr) throws ExtensionInitException {
 		this.helpers = helpers;
+		this.reader = exiftoolProcess.getReader();
+		this.writer = exiftoolProcess.getWriter();
 		try {
-			Process process = new ProcessBuilder(new String[] { "exiftool", "-stay_open", "True", "-@", "-" }).start();
-			outputStream = process.getOutputStream();
-			reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 			tempDirectory = Files.createTempDirectory("burpexiftool", TEMP_DIR_PERMISSIONS);
 			tempDirectory.toFile().deleteOnExit();
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new ExtensionInitException("Cannot create temporary directory", e);
 		}
 	}
 
@@ -79,10 +77,10 @@ public class ExifToolScanner implements IScannerCheck {
 		tmpOs.write(baseRequestResponse.getResponse(), responseInfo.getBodyOffset(), baseRequestResponse.getResponse().length - responseInfo.getBodyOffset());
 		tmpOs.close();
 		
-		outputStream.write("-m\n-S\n-E\n-sort\n".getBytes(StandardCharsets.UTF_8));
-		outputStream.write(tmp.toString().getBytes(StandardCharsets.UTF_8));
-		outputStream.write("\n-execute\n".getBytes(StandardCharsets.UTF_8));
-		outputStream.flush();
+		writer.write("-m\n-S\n-E\n-sort\n");
+		writer.write(tmp.toString());
+		writer.write("\n-execute\n");
+		writer.flush();
 		
 		StringBuilder details = new StringBuilder(UL_TAG);
 		String line;

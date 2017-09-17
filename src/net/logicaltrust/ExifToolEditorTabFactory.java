@@ -11,7 +11,7 @@ public class ExifToolEditorTabFactory implements IMessageEditorTabFactory {
 
 	private final IBurpExtenderCallbacks callbacks;
 	private final ExifToolProcess exiftoolProcess;
-	private PrintWriter stderr;
+	private final PrintWriter stderr;
 
 	public ExifToolEditorTabFactory(IBurpExtenderCallbacks callbacks, ExifToolProcess exiftoolProcess, PrintWriter stderr) {
 		this.callbacks = callbacks;

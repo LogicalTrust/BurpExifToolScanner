@@ -12,7 +12,7 @@ import burp.IScanIssue;
 import burp.IScannerCheck;
 import burp.IScannerInsertionPoint;
 
-public class ExifToolScanner implements IScannerCheck {
+public class ExifToolScannerCheck implements IScannerCheck {
 
 	private static final String FILETYPE_KEY = "FileType: ";
 
@@ -20,7 +20,7 @@ public class ExifToolScanner implements IScannerCheck {
 	private final ExifToolProcess exiftoolProcess;
 	private final PrintWriter stderr;
 
-	public ExifToolScanner(IExtensionHelpers helpers, ExifToolProcess exiftoolProcess, PrintWriter stderr) throws ExtensionInitException {
+	public ExifToolScannerCheck(IExtensionHelpers helpers, ExifToolProcess exiftoolProcess, PrintWriter stderr) throws ExtensionInitException {
 		this.helpers = helpers;
 		this.exiftoolProcess = exiftoolProcess;
 		this.stderr = stderr;
@@ -31,21 +31,9 @@ public class ExifToolScanner implements IScannerCheck {
 		try {
 			List<String> metadata = exiftoolProcess.readMetadataHtml(baseRequestResponse.getResponse());
 			if (!metadata.isEmpty()) {
-				URL url = helpers.analyzeRequest(baseRequestResponse.getHttpService(), baseRequestResponse.getRequest()).getUrl();
-				StringBuilder list = new StringBuilder("<ul>");
-				String filetype = "";
-				for (String line : metadata) {
-					list.append("<li>").append(line).append("</li>");
-					if (line.startsWith(FILETYPE_KEY)) {
-						filetype = " in " + line.substring(FILETYPE_KEY.length());
-					}
-				}
-				ExifToolScanIssue i = new ExifToolScanIssue(url, 
-						list.toString(), 
-						new IHttpRequestResponse[] { baseRequestResponse }, 
-						baseRequestResponse.getHttpService(),
-						"Metadata" + filetype + " (ExifTool)");
-				return Arrays.asList(i);
+				StringBuilder htmlList = new StringBuilder("<ul>");
+				String filetype = fillHtmlList(metadata, htmlList);
+				return createIssues(baseRequestResponse, htmlList, filetype);
 				
 			}
 		} catch (IOException e) {
@@ -53,6 +41,29 @@ public class ExifToolScanner implements IScannerCheck {
 		}
 		
 		return null;
+	}
+
+	private List<IScanIssue> createIssues(IHttpRequestResponse baseRequestResponse, StringBuilder list,
+			String filetype) {
+		URL url = helpers.analyzeRequest(baseRequestResponse.getHttpService(), baseRequestResponse.getRequest()).getUrl();
+		ExifToolScanIssue i = new ExifToolScanIssue(url, 
+				list.toString(), 
+				new IHttpRequestResponse[] { baseRequestResponse }, 
+				baseRequestResponse.getHttpService(),
+				"Metadata" + filetype + " (ExifTool)");
+		return Arrays.asList(i);
+	}
+	
+	private String fillHtmlList(List<String> metadata, StringBuilder sb) {
+		String filetype = "";
+		for (String line : metadata) {
+			sb.append("<li>").append(line).append("</li>");
+			if (line.startsWith(FILETYPE_KEY)) {
+				filetype = " in " + line.substring(FILETYPE_KEY.length());
+			}
+		}
+		sb.append("</ul>");
+		return filetype;
 	}
 	
 	@Override

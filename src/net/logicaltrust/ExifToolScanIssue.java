@@ -8,11 +8,11 @@ import burp.IScanIssue;
 
 public class ExifToolScanIssue implements IScanIssue {
 
-	private URL url;
-	private String issueDetail;
-	private IHttpRequestResponse[] httpMessages;
-	private IHttpService httpService;
-	private String issueName;
+	private final URL url;
+	private final String issueDetail;
+	private final IHttpRequestResponse[] httpMessages;
+	private final IHttpService httpService;
+	private final String issueName;
 
 	public ExifToolScanIssue(URL url, String issueDetail, IHttpRequestResponse[] httpMessages,
 			IHttpService httpService, String issueName) {

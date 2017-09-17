@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import burp.IMessageEditorTab;
 import burp.ITextEditor;
@@ -25,7 +24,7 @@ public class ExifToolEditorTab implements IMessageEditorTab {
 
 	@Override
 	public String getTabCaption() {
-		return "ExifTool metadata";
+		return "Metadata (ExifTool)";
 	}
 
 	@Override
@@ -39,14 +38,14 @@ public class ExifToolEditorTab implements IMessageEditorTab {
 			try {
 				List<String> metadata = exiftoolProcess.readMetadata(content);
 				if (!metadata.isEmpty()) {
-					String metadataText = metadata.stream().collect(Collectors.joining("\n"));
+					String metadataText = String.join("\n", metadata);
 					textEditor.setText(metadataText.getBytes(StandardCharsets.UTF_8));
 					return true;
 				}
 			} catch (IOException e) {
 				e.printStackTrace(stderr);
 			}
-		}		
+		}
 		return false;
 	}
 

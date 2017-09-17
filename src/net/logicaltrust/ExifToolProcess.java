@@ -22,21 +22,17 @@ import burp.IResponseInfo;
 public class ExifToolProcess {
 	
 	private static final List<String> TYPES_TO_IGNORE = Arrays.asList("HTML", "JSON", "script", "CSS");
-	private static final List<String> RESULT_LINES_TO_IGNORE = Arrays.asList("ExifToolVersion:", "Error:", "Directory:", "FileAccessDate:", "FileInodeChangeDate:", "FileModifyDate:", "FileName:", "FilePermissions:", "FileSize");
+	private static final List<String> LINES_TO_IGNORE = Arrays.asList("ExifToolVersion:", "Error:", "Directory:", "FileAccessDate:", "FileInodeChangeDate:", "FileModifyDate:", "FileName:", "FilePermissions:", "FileSize");
 	private static final FileAttribute<Set<PosixFilePermission>> TEMP_FILE_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
 	private static final FileAttribute<Set<PosixFilePermission>> TEMP_DIR_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
-
 
 	private final PrintWriter writer;
 	private final BufferedReader reader;
 	private final IExtensionHelpers helpers;
 	private final Path tempDirectory;
-	@SuppressWarnings("unused")
-	private final PrintWriter stderr;
 
-	public ExifToolProcess(IExtensionHelpers helpers, PrintWriter stderr) throws ExtensionInitException {
+	public ExifToolProcess(IExtensionHelpers helpers) throws ExtensionInitException {
 		this.helpers = helpers;
-		this.stderr = stderr;
 		
 		try {
 			Process process = new ProcessBuilder(new String[] { "exiftool", "-stay_open", "True", "-@", "-" }).start();
@@ -93,7 +89,7 @@ public class ExifToolProcess {
 		tmpOs.close();
 		return tmp;
 	}
-
+	
 	private void notifyExifTool(Path tmp, String exifToolParams) {
 		writer.write(exifToolParams);
 		writer.write(tmp.toString());
@@ -105,20 +101,15 @@ public class ExifToolProcess {
 		List<String> result = new ArrayList<>();
 		String line;
 		while ((line = reader.readLine()) != null && !"{ready}".equals(line)) {
-			if (!isLineToIgnore(line)) {
+			if (isAppropriateLine(line)) {
 				result.add(line);
 			}
 		}
 		return result;
 	}
 
-	private boolean isLineToIgnore(String line) {
-		for (String lineToIgnore : RESULT_LINES_TO_IGNORE) {
-			if (line.startsWith(lineToIgnore)) {
-				return true;
-			}
-		}
-		return false;
+	private boolean isAppropriateLine(String line) {
+		return LINES_TO_IGNORE.stream().noneMatch((lineToIgnore) -> line.startsWith(lineToIgnore));
 	}
 	
 }

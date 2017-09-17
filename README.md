@@ -1,9 +1,8 @@
 # BurpExifToolScanner
-This Burp extension performs passive scan using ExifTool.
-
-Reads metadata from various filetypes: JPEG, PNG, PDF, DOC, XLS and much more.
+This Burp extension reads metadata from various filetypes (JPEG, PNG, PDF, DOC, XLS and much more) using ExifTool. Results are presented as Passive scan issues and Message editor tabs.
 
 Requirements:
 * ExifTool installed and added to PATH
 
-![configuration screen](https://raw.githubusercontent.com/LogicalTrust/materials/master/burp-exiftoolscanner/1.png)
+![screen 1](https://raw.githubusercontent.com/LogicalTrust/materials/master/burp-exiftoolscanner/1.png)
+![screen 2](https://raw.githubusercontent.com/LogicalTrust/materials/master/burp-exiftoolscanner/2.png)

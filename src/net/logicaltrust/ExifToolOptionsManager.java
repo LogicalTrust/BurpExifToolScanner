@@ -23,17 +23,29 @@ public class ExifToolOptionsManager {
 		this.scanner = scanner;
 		this.tabFactory = tabFactory;
 		
-		if (Boolean.parseBoolean(callbacks.loadExtensionSetting(PASSIVE_SCAN))) {
+		if (isPassiveScanOn()) {
 			callbacks.registerScannerCheck(scanner);
 		}
 		
-		if (Boolean.parseBoolean(callbacks.loadExtensionSetting(MESSAGE_EDITOR))) {
+		if (isMessageEditorOn()) {
 			callbacks.registerMessageEditorTabFactory(tabFactory);
 		}
 		
+		exiftoolProcess.setTypesToIgnore(getMimeTypesToIgnore());
+	}
+	
+	public boolean isPassiveScanOn() {
+		return Boolean.parseBoolean(callbacks.loadExtensionSetting(PASSIVE_SCAN));
+	}
+	
+	public boolean isMessageEditorOn() {
+		return Boolean.parseBoolean(callbacks.loadExtensionSetting(MESSAGE_EDITOR)); 
+	}
+	
+	public List<String> getMimeTypesToIgnore() {
 		String mimeTypes = callbacks.loadExtensionSetting(MIME_TYPES_TO_IGNORE);
 		List<String> mimeTypesToIgnore = mimeTypes != null ? Arrays.asList(mimeTypes.split("\n")) : Arrays.asList("HTML", "JSON", "script", "CSS");
-		exiftoolProcess.setTypesToIgnore(mimeTypesToIgnore);
+		return mimeTypesToIgnore;
 	}
 	
 	public void changePassiveScan(boolean on) {

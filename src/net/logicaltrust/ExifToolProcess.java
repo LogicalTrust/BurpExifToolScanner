@@ -21,7 +21,7 @@ import burp.IResponseInfo;
 
 public class ExifToolProcess {
 	
-	private static final List<String> TYPES_TO_IGNORE = Arrays.asList("HTML", "JSON", "script", "CSS");
+	private List<String> typesToIgnore;
 	private static final List<String> LINES_TO_IGNORE = Arrays.asList("ExifToolVersion:", "Error:", "Directory:", "FileAccessDate:", "FileInodeChangeDate:", "FileModifyDate:", "FileName:", "FilePermissions:", "FileSize");
 	private static final FileAttribute<Set<PosixFilePermission>> TEMP_FILE_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
 	private static final FileAttribute<Set<PosixFilePermission>> TEMP_DIR_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
@@ -56,6 +56,10 @@ public class ExifToolProcess {
 		}
 	}
 	
+	public void setTypesToIgnore(List<String> typesToIgnore) {
+		this.typesToIgnore = typesToIgnore;
+	}
+	
 	public List<String> readMetadataHtml(byte[] response) throws IOException {
 		return readMetadata(response, "-m\n-S\n-E\n-sort\n");
 	}
@@ -67,7 +71,7 @@ public class ExifToolProcess {
 	private List<String> readMetadata(byte[] response, String exifToolParams) throws IOException {
 		IResponseInfo responseInfo = helpers.analyzeResponse(response);
 		
-		if (TYPES_TO_IGNORE.contains(responseInfo.getStatedMimeType()) || TYPES_TO_IGNORE.contains(responseInfo.getInferredMimeType())) {
+		if (typesToIgnore.contains(responseInfo.getStatedMimeType()) || typesToIgnore.contains(responseInfo.getInferredMimeType())) {
 			return Collections.emptyList();
 		}
 		

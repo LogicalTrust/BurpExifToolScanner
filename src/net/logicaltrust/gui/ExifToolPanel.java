@@ -9,7 +9,8 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -33,22 +34,25 @@ public class ExifToolPanel extends JPanel implements ITab, TableModelListener {
 	private static final long serialVersionUID = 1L;
 	private JTable mimeTypesTable;
 	private DefaultTableModel mimeTypesModel;
-	private PrintWriter stderr;
+	private ExifToolOptionsManager optionsManager;
 
-	public ExifToolPanel(PrintWriter stderr, ExifToolOptionsManager optionsManager) {
-		this.stderr = stderr;
+	public ExifToolPanel(ExifToolOptionsManager optionsManager) {
+		this.optionsManager = optionsManager;
 		setLayout(new BorderLayout(0, 0));
 		
 		JPanel mimeTypesPanel = new JPanel();
 		mimeTypesPanel.setToolTipText("MIME Type - the possible values are the same as those used in the main Burp UI");
-		mimeTypesPanel.setBorder(new TitledBorder(new EmptyBorder(30, 20, 10, 20), "MIME Type", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(51, 51, 51)));
+		mimeTypesPanel.setBorder(new TitledBorder(new EmptyBorder(30, 20, 10, 20), "Ignore MIME Types", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(51, 51, 51)));
 		add(mimeTypesPanel, BorderLayout.CENTER);
 		mimeTypesPanel.setLayout(new BorderLayout(0, 0));
-		
+
 		mimeTypesTable = new JTable();
 		mimeTypesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		mimeTypesPanel.add(mimeTypesTable, BorderLayout.CENTER);
-		mimeTypesModel = new DefaultTableModel(new Object[][] { new Object[] {"aa"}, new Object[] { "bbbb"} }, new String[] { "type" });
+		mimeTypesModel = new DefaultTableModel(new String[] { "type" }, 0);
+		for (String type : optionsManager.getMimeTypesToIgnore()) {
+			mimeTypesModel.addRow(new Object[] { type });
+		}
 		mimeTypesTable.setModel(mimeTypesModel);
 		mimeTypesModel.addTableModelListener(this);
 		
@@ -120,10 +124,37 @@ public class ExifToolPanel extends JPanel implements ITab, TableModelListener {
 		
 		JCheckBox chckbxPassiveScan = new JCheckBox("Passive Scan");
 		checkboxPanel.add(chckbxPassiveScan);
-		
+		chckbxPassiveScan.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				optionsManager.changePassiveScan(chckbxPassiveScan.isSelected());
+			}
+		});
+		if (optionsManager.isPassiveScanOn()) {
+			chckbxPassiveScan.doClick();
+		}
+	
 		JCheckBox chckbxMessageEditor = new JCheckBox("Message Editor");
 		checkboxPanel.add(chckbxMessageEditor);
+		chckbxMessageEditor.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				optionsManager.changeMessageEditor(chckbxMessageEditor.isSelected());
+			}
+		});
+		if (optionsManager.isMessageEditorOn()) {
+			chckbxMessageEditor.doClick();
+		}
 		mimeTypesTable.getColumnModel().getColumn(0).setResizable(false);
+	}
+	
+	private void notifyAboutMimeTypesChange() {
+		int rowCount = mimeTypesModel.getRowCount();
+		List<String> mimeTypes = new ArrayList<>(rowCount);
+		for (int i = 0; i < rowCount; i++) {
+			mimeTypes.add((String) mimeTypesModel.getValueAt(i, 0));
+		}
+		optionsManager.updateMimeTypesToIgnore(mimeTypes);
 	}
 
 	@Override
@@ -138,9 +169,6 @@ public class ExifToolPanel extends JPanel implements ITab, TableModelListener {
 
 	@Override
 	public void tableChanged(TableModelEvent e) {
-		for (int i = 0, columns = mimeTypesModel.getColumnCount(); i < columns; i++) {
-			stderr.println(mimeTypesModel.getValueAt(0, i));
-		}
-		
+		notifyAboutMimeTypesChange();
 	}
 }

@@ -15,11 +15,13 @@ public class BurpExtender implements IBurpExtender {
 	public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
 		
 		PrintWriter stderr = new PrintWriter(callbacks.getStderr(), true);
+		PrintWriter stdout = new PrintWriter(callbacks.getStdout(), true);
+		
 		try {
-			ExifToolProcess exiftoolProcess = new ExifToolProcess(callbacks.getHelpers());
+			ExifToolProcess exiftoolProcess = new ExifToolProcess(callbacks.getHelpers(), stdout);
 			ExifToolScannerCheck scanner = new ExifToolScannerCheck(callbacks.getHelpers(), exiftoolProcess, stderr);
 			ExifToolEditorTabFactory tabFactory = new ExifToolEditorTabFactory(callbacks, exiftoolProcess, stderr);
-			ExifToolOptionsManager optionsManager = new ExifToolOptionsManager(callbacks, exiftoolProcess, scanner, tabFactory);
+			ExifToolOptionsManager optionsManager = new ExifToolOptionsManager(callbacks, exiftoolProcess, scanner, tabFactory, stdout);
 			callbacks.addSuiteTab(new ExifToolPanel(optionsManager));
 		} catch (ExtensionInitException e) {
 			e.printStackTrace(stderr);

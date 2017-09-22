@@ -11,18 +11,20 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import burp.IExtensionHelpers;
 import burp.IResponseInfo;
 
 public class ExifToolProcess {
 	
-	private List<String> typesToIgnore;
-	private static final List<String> LINES_TO_IGNORE = Arrays.asList("ExifToolVersion:", "Error:", "Directory:", "FileAccessDate:", "FileInodeChangeDate:", "FileModifyDate:", "FileName:", "FilePermissions:", "FileSize");
+	private volatile Collection<String> typesToIgnore;
+	private volatile Collection<String> linesToIgnore;
+	
 	private static final FileAttribute<Set<PosixFilePermission>> TEMP_FILE_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
 	private static final FileAttribute<Set<PosixFilePermission>> TEMP_DIR_PERMISSIONS = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
 
@@ -30,9 +32,12 @@ public class ExifToolProcess {
 	private final BufferedReader reader;
 	private final IExtensionHelpers helpers;
 	private final Path tempDirectory;
+	@SuppressWarnings("unused")
+	private final PrintWriter stdout;
 
-	public ExifToolProcess(IExtensionHelpers helpers) throws ExtensionInitException {
+	public ExifToolProcess(IExtensionHelpers helpers, PrintWriter stdout) throws ExtensionInitException {
 		this.helpers = helpers;
+		this.stdout = stdout;
 		
 		try {
 			Process process = new ProcessBuilder(new String[] { "exiftool", "-stay_open", "True", "-@", "-" }).start();
@@ -56,8 +61,12 @@ public class ExifToolProcess {
 		}
 	}
 	
-	public void setTypesToIgnore(List<String> typesToIgnore) {
+	public void setTypesToIgnore(Collection<String> typesToIgnore) {
 		this.typesToIgnore = typesToIgnore;
+	}
+	
+	public void setLinesToIgnore(Collection<String> linesToIgnore) {
+		this.linesToIgnore = linesToIgnore.stream().map(line -> line + ":").collect(Collectors.toSet());
 	}
 	
 	public List<String> readMetadataHtml(byte[] response) throws IOException {
@@ -70,7 +79,6 @@ public class ExifToolProcess {
 	
 	private List<String> readMetadata(byte[] response, String exifToolParams) throws IOException {
 		IResponseInfo responseInfo = helpers.analyzeResponse(response);
-		
 		if (typesToIgnore.contains(responseInfo.getStatedMimeType()) || typesToIgnore.contains(responseInfo.getInferredMimeType())) {
 			return Collections.emptyList();
 		}
@@ -113,7 +121,7 @@ public class ExifToolProcess {
 	}
 
 	private boolean isAppropriateLine(String line) {
-		return LINES_TO_IGNORE.stream().noneMatch((lineToIgnore) -> line.startsWith(lineToIgnore));
+		return linesToIgnore.stream().noneMatch((lineToIgnore) -> line.startsWith(lineToIgnore));
 	}
 	
 }

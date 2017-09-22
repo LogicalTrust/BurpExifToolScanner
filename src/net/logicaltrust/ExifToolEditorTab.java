@@ -34,7 +34,7 @@ public class ExifToolEditorTab implements IMessageEditorTab {
 
 	@Override
 	public boolean isEnabled(byte[] content, boolean isRequest) {
-		if (!isRequest) {
+		if (!isRequest && content.length > 0) {
 			try {
 				List<String> metadata = exiftoolProcess.readMetadata(content);
 				if (!metadata.isEmpty()) {

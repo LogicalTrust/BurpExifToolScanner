@@ -22,7 +22,7 @@ public class BurpExtender implements IBurpExtender {
 			ExifToolScannerCheck scanner = new ExifToolScannerCheck(callbacks.getHelpers(), exiftoolProcess, stderr);
 			ExifToolEditorTabFactory tabFactory = new ExifToolEditorTabFactory(callbacks, exiftoolProcess, stderr);
 			ExifToolOptionsManager optionsManager = new ExifToolOptionsManager(callbacks, exiftoolProcess, scanner, tabFactory, stdout);
-			callbacks.addSuiteTab(new ExifToolPanel(optionsManager));
+			callbacks.addSuiteTab(new ExifToolPanel(optionsManager, stderr));
 		} catch (ExtensionInitException e) {
 			e.printStackTrace(stderr);
 		}

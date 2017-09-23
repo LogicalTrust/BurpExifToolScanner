@@ -64,13 +64,15 @@ public class ExifToolPanel extends JPanel implements ITab {
 		JPanel mimeTable = new ExifToolTable("Ignore MIME Types", "Do not scan specified MIME Types. The possible values are the same as those used in the main Burp UI",
 				optionsManager.getMimeTypesToIgnore(), 
 				optionsManager.getDefaultMimeTypesToIgnore(), 
-				optionsManager::updateMimeTypesToIgnore);
+				optionsManager::updateMimeTypesToIgnore,
+				stderr);
 		tablesPanel.add(mimeTable);
 		
 		JPanel fieldsTable = new ExifToolTable("Ignore result lines", "Do not print lines with specified tags.",
 				optionsManager.getLinesToIgnore(), 
 				optionsManager.getDefaultLinesToIgnore(), 
-				optionsManager::updateLinesToIgnore);
+				optionsManager::updateLinesToIgnore,
+				stderr);
 		tablesPanel.add(fieldsTable);
 	}
 	

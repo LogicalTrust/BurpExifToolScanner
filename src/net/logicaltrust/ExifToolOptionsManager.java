@@ -3,6 +3,7 @@ package net.logicaltrust;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 
 import burp.IBurpExtenderCallbacks;
@@ -51,7 +52,7 @@ public class ExifToolOptionsManager {
 	
 	private Collection<String> getIgnoreSettings(String settingName, Collection<String> fallback) {
 		String settingsSerialized = callbacks.loadExtensionSetting(settingName);
-		Collection<String> settings = settingsSerialized != null ? Arrays.stream(settingsSerialized.split(DELIMETER)).collect(Collectors.toSet()) : fallback;
+		Collection<String> settings = settingsSerialized != null ? Arrays.stream(settingsSerialized.split(DELIMETER)).collect(Collectors.toCollection(LinkedHashSet::new)) : fallback;
 		return settings;
 	}
 	

@@ -35,22 +35,24 @@ public class ExifToolEditorTab implements IMessageEditorTab {
 	@Override
 	public boolean isEnabled(byte[] content, boolean isRequest) {
 		if (!isRequest && content.length > 0) {
-			try {
-				List<String> metadata = exiftoolProcess.readMetadata(content);
-				if (!metadata.isEmpty()) {
-					String metadataText = String.join("\n", metadata);
-					textEditor.setText(metadataText.getBytes(StandardCharsets.UTF_8));
-					return true;
-				}
-			} catch (IOException e) {
-				e.printStackTrace(stderr);
-			}
+			return exiftoolProcess.canReadMetadata(content);
 		}
 		return false;
 	}
 
 	@Override
 	public void setMessage(byte[] content, boolean isRequest) {
+		if (!isRequest && content.length > 0) {
+			try {
+				List<String> metadata = exiftoolProcess.readMetadata(content);
+				if (!metadata.isEmpty()) {
+					String metadataText = String.join("\n", metadata);
+					textEditor.setText(metadataText.getBytes(StandardCharsets.UTF_8));
+				}
+			} catch (IOException e) {
+				e.printStackTrace(stderr);
+			}
+		}
 	}
 
 	@Override

@@ -77,9 +77,14 @@ public class ExifToolProcess {
 		return readMetadata(response, "-m\n-S\n-sort\n");
 	}
 	
+	public boolean canReadMetadata(byte[] response) {
+		IResponseInfo responseInfo = helpers.analyzeResponse(response);
+		return isMimeTypeAppropriate(responseInfo);
+	}
+	
 	private List<String> readMetadata(byte[] response, String exifToolParams) throws IOException {
 		IResponseInfo responseInfo = helpers.analyzeResponse(response);
-		if (typesToIgnore.contains(responseInfo.getStatedMimeType()) || typesToIgnore.contains(responseInfo.getInferredMimeType())) {
+		if (!isMimeTypeAppropriate(responseInfo)) {
 			return Collections.emptyList();
 		}
 		
@@ -92,6 +97,10 @@ public class ExifToolProcess {
 		Files.deleteIfExists(tmp);
 		
 		return result;
+	}
+	
+	private boolean isMimeTypeAppropriate(IResponseInfo responseInfo) {
+		return !typesToIgnore.contains(responseInfo.getStatedMimeType()) && !typesToIgnore.contains(responseInfo.getInferredMimeType());
 	}
 	
 	private Path writeToTempFile(IResponseInfo responseInfo, byte[] response) throws IOException {

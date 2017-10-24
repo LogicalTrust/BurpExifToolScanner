@@ -10,7 +10,7 @@ import burp.IBurpExtenderCallbacks;
 
 public class ExifToolOptionsManager {
 
-	private static final Collection<String> DEFAULT_MIME_TYPES_TO_IGNORE = Arrays.asList("HTML", "JSON", "script", "CSS");
+	private static final Collection<String> DEFAULT_MIME_TYPES_TO_IGNORE = Arrays.asList("HTML", "JSON", "script", "CSS", "XML");
 	private static final Collection<String> DEFAULT_LINES_TO_IGNORE = Arrays.asList("ExifToolVersion", "Error", "Directory", "FileAccessDate", "FileInodeChangeDate", "FileModifyDate", "FileName", "FilePermissions", "FileSize");
 	private static final String DELIMETER = "\n";
 	

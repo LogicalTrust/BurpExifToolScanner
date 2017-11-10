@@ -19,9 +19,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import burp.IExtensionHelpers;
+import burp.IExtensionStateListener;
 import burp.IResponseInfo;
 
-public class ExifToolProcess {
+public class ExifToolProcess implements IExtensionStateListener {
 	
 	private volatile Collection<String> typesToIgnore;
 	private volatile Collection<String> linesToIgnore;
@@ -35,21 +36,16 @@ public class ExifToolProcess {
 	private final Path tempDirectory;
 	@SuppressWarnings("unused")
 	private final PrintWriter stdout;
+	private Process process;
 
 	public ExifToolProcess(IExtensionHelpers helpers, PrintWriter stdout) throws ExtensionInitException {
 		this.helpers = helpers;
 		this.stdout = stdout;
 		
 		try {
-			Process process = new ProcessBuilder(new String[] { "exiftool", "-stay_open", "True", "-@", "-" }).start();
+			process = new ProcessBuilder(new String[] { "exiftool", "-stay_open", "True", "-@", "-" }).start();
 			writer = new PrintWriter(process.getOutputStream());
 			reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-			Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-				@Override
-				public void run() {
-					process.destroy();
-				}
-			}));
 		} catch (IOException e) {
 			throw new ExtensionInitException("Cannot run ExifTool process. Do you have exiftool set in your PATH?", e);
 		}
@@ -154,6 +150,11 @@ public class ExifToolProcess {
 		file.setReadable(false, true);
 		file.setWritable(true, true);
 		file.setExecutable(false);
+	}
+
+	@Override
+	public void extensionUnloaded() {
+		process.destroy();
 	}
 	
 }

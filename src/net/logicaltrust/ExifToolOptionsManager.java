@@ -100,5 +100,4 @@ public class ExifToolOptionsManager {
 		exiftoolProcess.setLinesToIgnore(lines);
 	}
 	
-	
 }

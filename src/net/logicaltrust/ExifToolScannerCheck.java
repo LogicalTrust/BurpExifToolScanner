@@ -1,6 +1,5 @@
 package net.logicaltrust;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.util.Arrays;
@@ -36,7 +35,7 @@ public class ExifToolScannerCheck implements IScannerCheck {
 				return createIssues(baseRequestResponse, htmlList, filetype);
 				
 			}
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace(stderr);
 		}
 		

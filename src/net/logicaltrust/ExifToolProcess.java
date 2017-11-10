@@ -1,6 +1,7 @@
 package net.logicaltrust;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -54,7 +55,12 @@ public class ExifToolProcess {
 		}
 		
 		try {
-			tempDirectory = Files.createTempDirectory("burpexiftool", TEMP_DIR_PERMISSIONS);
+			if (isWindows()) {
+				tempDirectory = Files.createTempDirectory("burpexiftool");
+				setWindowsPermissions(tempDirectory);
+			} else {
+				tempDirectory = Files.createTempDirectory("burpexiftool", TEMP_DIR_PERMISSIONS);
+			}
 			tempDirectory.toFile().deleteOnExit();
 		} catch (IOException e) {
 			throw new ExtensionInitException("Cannot create temporary directory", e);
@@ -104,7 +110,13 @@ public class ExifToolProcess {
 	}
 	
 	private Path writeToTempFile(IResponseInfo responseInfo, byte[] response) throws IOException {
-		Path tmp = Files.createTempFile(tempDirectory, "file", "", TEMP_FILE_PERMISSIONS);
+		Path tmp;
+		if (isWindows()) {
+			tmp = Files.createTempFile(tempDirectory, "file", "");
+			setWindowsPermissions(tmp);
+		} else {
+			 tmp = Files.createTempFile(tempDirectory, "file", "", TEMP_FILE_PERMISSIONS);
+		}
 		OutputStream tmpOs = Files.newOutputStream(tmp);
 		tmpOs.write(response, responseInfo.getBodyOffset(), response.length - responseInfo.getBodyOffset());
 		tmpOs.close();
@@ -131,6 +143,17 @@ public class ExifToolProcess {
 
 	private boolean isAppropriateLine(String line) {
 		return linesToIgnore.stream().noneMatch((lineToIgnore) -> line.startsWith(lineToIgnore));
+	}
+	
+	private boolean isWindows() {
+		return System.getProperty("os.name").toLowerCase().contains("win");
+	}
+	
+	private void setWindowsPermissions(Path path) {
+		File file = path.toFile();
+		file.setReadable(false, true);
+		file.setWritable(true, true);
+		file.setExecutable(false);
 	}
 	
 }

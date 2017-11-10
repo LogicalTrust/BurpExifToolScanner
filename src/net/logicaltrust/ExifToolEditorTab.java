@@ -1,7 +1,6 @@
 package net.logicaltrust;
 
 import java.awt.Component;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -49,7 +48,7 @@ public class ExifToolEditorTab implements IMessageEditorTab {
 					String metadataText = String.join("\n", metadata);
 					textEditor.setText(metadataText.getBytes(StandardCharsets.UTF_8));
 				}
-			} catch (IOException e) {
+			} catch (Exception e) {
 				e.printStackTrace(stderr);
 			}
 		}

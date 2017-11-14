@@ -10,7 +10,6 @@ import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -21,14 +20,15 @@ import javax.swing.border.EmptyBorder;
 
 import burp.ITab;
 import net.logicaltrust.ExifToolOptionsManager;
+import net.logicaltrust.SimpleLogger;
 
 public class ExifToolPanel extends JPanel implements ITab {
 
 	private static final long serialVersionUID = 1L;
-	private final PrintWriter stderr;
+	private final SimpleLogger stderr;
 
-	public ExifToolPanel(ExifToolOptionsManager optionsManager, PrintWriter stderr) {
-		this.stderr = stderr;
+	public ExifToolPanel(ExifToolOptionsManager optionsManager, SimpleLogger logger) {
+		this.stderr = logger;
 		setLayout(new BorderLayout(0, 0));
 		
 		JPanel githubPanel = new JPanel();
@@ -43,19 +43,26 @@ public class ExifToolPanel extends JPanel implements ITab {
 		add(checkboxPanel, BorderLayout.NORTH);
 		checkboxPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
 		
+		JCheckBox chckbxDebug = new JCheckBox("Debug output");
+		chckbxDebug.addActionListener(e -> optionsManager.changeDebugOutput(chckbxDebug.isSelected()));
+		chckbxDebug.setSelected(optionsManager.isDebugOn());
+		optionsManager.changeDebugOutput(optionsManager.isDebugOn());
+		
 		JCheckBox chckbxPassiveScan = new JCheckBox("Passive Scan");
-		checkboxPanel.add(chckbxPassiveScan);
 		chckbxPassiveScan.addActionListener(e -> optionsManager.changePassiveScan(chckbxPassiveScan.isSelected()));
 		if (optionsManager.isPassiveScanOn()) {
 			chckbxPassiveScan.doClick();
 		}
 	
 		JCheckBox chckbxMessageEditor = new JCheckBox("Message Editor");
-		checkboxPanel.add(chckbxMessageEditor);
 		chckbxMessageEditor.addActionListener(e -> optionsManager.changeMessageEditor(chckbxMessageEditor.isSelected()));
 		if (optionsManager.isMessageEditorOn()) {
 			chckbxMessageEditor.doClick();
 		}
+
+		checkboxPanel.add(chckbxPassiveScan);
+		checkboxPanel.add(chckbxMessageEditor);
+		checkboxPanel.add(chckbxDebug);
 		
 		JPanel tablesPanel = new JPanel();
 		add(tablesPanel, BorderLayout.CENTER);
@@ -65,14 +72,14 @@ public class ExifToolPanel extends JPanel implements ITab {
 				optionsManager.getMimeTypesToIgnore(), 
 				optionsManager.getDefaultMimeTypesToIgnore(), 
 				optionsManager::updateMimeTypesToIgnore,
-				stderr);
+				logger.getStderr());
 		tablesPanel.add(mimeTable);
 		
 		JPanel fieldsTable = new ExifToolTable("Ignore result lines", "Do not print lines with specified tags.",
 				optionsManager.getLinesToIgnore(), 
 				optionsManager.getDefaultLinesToIgnore(), 
 				optionsManager::updateLinesToIgnore,
-				stderr);
+				logger.getStderr());
 		tablesPanel.add(fieldsTable);
 	}
 	
@@ -86,7 +93,7 @@ public class ExifToolPanel extends JPanel implements ITab {
 				try {
 					Desktop.getDesktop().browse(new URI(lblUrl.getText()));
 				} catch (URISyntaxException | IOException ex) {
-					ex.printStackTrace(stderr);
+					ex.printStackTrace(stderr.getStderr());
 				}
 			}
 		});

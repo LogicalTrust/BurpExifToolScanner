@@ -1,6 +1,5 @@
 package net.logicaltrust;
 
-import java.io.PrintWriter;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
@@ -17,12 +16,12 @@ public class ExifToolScannerCheck implements IScannerCheck {
 
 	private final IExtensionHelpers helpers;
 	private final ExifToolProcess exiftoolProcess;
-	private final PrintWriter stderr;
+	private final SimpleLogger logger;
 
-	public ExifToolScannerCheck(IExtensionHelpers helpers, ExifToolProcess exiftoolProcess, PrintWriter stderr) throws ExtensionInitException {
+	public ExifToolScannerCheck(IExtensionHelpers helpers, ExifToolProcess exiftoolProcess, SimpleLogger logger) throws ExtensionInitException {
 		this.helpers = helpers;
 		this.exiftoolProcess = exiftoolProcess;
-		this.stderr = stderr;
+		this.logger = logger;
 	}
 
 	@Override
@@ -32,11 +31,13 @@ public class ExifToolScannerCheck implements IScannerCheck {
 			if (!metadata.isEmpty()) {
 				StringBuilder htmlList = new StringBuilder("<ul>");
 				String filetype = fillHtmlList(metadata, htmlList);
+				logger.debug("Metadata read from exiftool [IScannerCheck] ");
 				return createIssues(baseRequestResponse, htmlList, filetype);
-				
+			} else {
+				logger.debug("No data read from exiftool [IScannerCheck]");
 			}
 		} catch (Exception e) {
-			e.printStackTrace(stderr);
+			e.printStackTrace(logger.getStderr());
 		}
 		
 		return null;

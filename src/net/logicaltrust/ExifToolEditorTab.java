@@ -1,7 +1,6 @@
 package net.logicaltrust;
 
 import java.awt.Component;
-import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -12,11 +11,11 @@ public class ExifToolEditorTab implements IMessageEditorTab {
 
 	private final ITextEditor textEditor;
 	private final ExifToolProcess exiftoolProcess;
-	private final PrintWriter stderr;
+	private final SimpleLogger logger;
 
-	public ExifToolEditorTab(ITextEditor textEditor, ExifToolProcess exiftoolProcess, PrintWriter stderr) {
+	public ExifToolEditorTab(ITextEditor textEditor, ExifToolProcess exiftoolProcess, SimpleLogger logger) {
 		this.textEditor = textEditor;
-		this.stderr = stderr;
+		this.logger = logger;
 		textEditor.setEditable(false);
 		this.exiftoolProcess = exiftoolProcess;
 	}
@@ -33,10 +32,12 @@ public class ExifToolEditorTab implements IMessageEditorTab {
 
 	@Override
 	public boolean isEnabled(byte[] content, boolean isRequest) {
+		boolean enabled = false;
 		if (!isRequest && content.length > 0) {
-			return exiftoolProcess.canReadMetadata(content);
+			enabled = exiftoolProcess.canReadMetadata(content);
 		}
-		return false;
+		logger.debug("IMessageEditorTab isEnabled: " + enabled);
+		return enabled;
 	}
 
 	@Override
@@ -47,9 +48,12 @@ public class ExifToolEditorTab implements IMessageEditorTab {
 				if (!metadata.isEmpty()) {
 					String metadataText = String.join("\n", metadata);
 					textEditor.setText(metadataText.getBytes(StandardCharsets.UTF_8));
+					logger.debug("Metadata read from exiftool [IMessageEditorTab] ");
+				} else {
+					logger.debug("No data read from exiftool [IMessageEditorTab]");
 				}
 			} catch (Exception e) {
-				e.printStackTrace(stderr);
+				e.printStackTrace(logger.getStderr());
 			}
 		}
 	}

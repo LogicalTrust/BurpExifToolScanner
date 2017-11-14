@@ -1,7 +1,5 @@
 package net.logicaltrust;
 
-import java.io.PrintWriter;
-
 import burp.IBurpExtenderCallbacks;
 import burp.IMessageEditorController;
 import burp.IMessageEditorTab;
@@ -11,17 +9,17 @@ public class ExifToolEditorTabFactory implements IMessageEditorTabFactory {
 
 	private final IBurpExtenderCallbacks callbacks;
 	private final ExifToolProcess exiftoolProcess;
-	private final PrintWriter stderr;
+	private final SimpleLogger logger;
 
-	public ExifToolEditorTabFactory(IBurpExtenderCallbacks callbacks, ExifToolProcess exiftoolProcess, PrintWriter stderr) {
+	public ExifToolEditorTabFactory(IBurpExtenderCallbacks callbacks, ExifToolProcess exiftoolProcess, SimpleLogger logger) {
 		this.callbacks = callbacks;
 		this.exiftoolProcess = exiftoolProcess;
-		this.stderr = stderr;
+		this.logger = logger;
 	}
 
 	@Override
 	public IMessageEditorTab createNewInstance(IMessageEditorController controller, boolean editable) {
-		return new ExifToolEditorTab(callbacks.createTextEditor(), exiftoolProcess, stderr);
+		return new ExifToolEditorTab(callbacks.createTextEditor(), exiftoolProcess, logger);
 	}
 
 }

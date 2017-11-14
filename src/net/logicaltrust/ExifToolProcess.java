@@ -34,18 +34,18 @@ public class ExifToolProcess implements IExtensionStateListener {
 	private final BufferedReader reader;
 	private final IExtensionHelpers helpers;
 	private final Path tempDirectory;
-	@SuppressWarnings("unused")
-	private final PrintWriter stdout;
+	private final SimpleLogger logger;
 	private Process process;
 
-	public ExifToolProcess(IExtensionHelpers helpers, PrintWriter stdout) throws ExtensionInitException {
+	public ExifToolProcess(IExtensionHelpers helpers, SimpleLogger stdout) throws ExtensionInitException {
 		this.helpers = helpers;
-		this.stdout = stdout;
+		this.logger = stdout;
 		
 		try {
 			process = new ProcessBuilder(new String[] { "exiftool", "-stay_open", "True", "-@", "-" }).start();
 			writer = new PrintWriter(process.getOutputStream());
 			reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			stdout.debug("Process started");
 		} catch (IOException e) {
 			throw new ExtensionInitException("Cannot run ExifTool process. Do you have exiftool set in your PATH?", e);
 		}
@@ -58,6 +58,7 @@ public class ExifToolProcess implements IExtensionStateListener {
 				tempDirectory = Files.createTempDirectory("burpexiftool", TEMP_DIR_PERMISSIONS);
 			}
 			tempDirectory.toFile().deleteOnExit();
+			stdout.debug("Temp directory " + tempDirectory + " created");
 		} catch (IOException e) {
 			throw new ExtensionInitException("Cannot create temporary directory", e);
 		}
@@ -85,8 +86,10 @@ public class ExifToolProcess implements IExtensionStateListener {
 	}
 	
 	private List<String> readMetadata(byte[] response, String exifToolParams) throws IOException {
+		logger.debug("Reading metadata from response");
 		IResponseInfo responseInfo = helpers.analyzeResponse(response);
 		if (!isMimeTypeAppropriate(responseInfo)) {
+			logger.debug("Inappropriate MIME Type: " + responseInfo.getStatedMimeType() + ", " + responseInfo.getInferredMimeType());
 			return Collections.emptyList();
 		}
 		
@@ -96,6 +99,7 @@ public class ExifToolProcess implements IExtensionStateListener {
 			notifyExifTool(tmp, exifToolParams);
 			result = readResult();
 		}
+		logger.debug("Deleting temp file " + tmp);
 		Files.deleteIfExists(tmp);
 		
 		return result;
@@ -106,6 +110,7 @@ public class ExifToolProcess implements IExtensionStateListener {
 	}
 	
 	private Path writeToTempFile(IResponseInfo responseInfo, byte[] response) throws IOException {
+		logger.debug("Creating temp file");
 		Path tmp;
 		if (isWindows()) {
 			tmp = Files.createTempFile(tempDirectory, "file", "");
@@ -116,24 +121,29 @@ public class ExifToolProcess implements IExtensionStateListener {
 		OutputStream tmpOs = Files.newOutputStream(tmp);
 		tmpOs.write(response, responseInfo.getBodyOffset(), response.length - responseInfo.getBodyOffset());
 		tmpOs.close();
+		logger.debug("Temp file " + tmp + " created");
 		return tmp;
 	}
 	
 	private void notifyExifTool(Path tmp, String exifToolParams) {
+		logger.debug("Notifying exiftool");
 		writer.write(exifToolParams);
 		writer.write(tmp.toString());
 		writer.write("\n-execute\n");
 		writer.flush();
+		logger.debug("Exiftool notified");
 	}
 
 	private List<String> readResult() throws IOException {
+		logger.debug("Reading result from exiftool");
 		List<String> result = new ArrayList<>();
 		String line;
-		while ((line = reader.readLine()) != null && !"{ready}".equals(line)) {
+		while ((line = reader.readLine()) != null && logger.debug(line) && !"{ready}".equals(line)) {
 			if (isAppropriateLine(line)) {
 				result.add(line);
 			}
 		}
+		logger.debug(result.size() +  " elements read");
 		return result;
 	}
 

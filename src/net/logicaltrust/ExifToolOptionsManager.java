@@ -1,6 +1,5 @@
 package net.logicaltrust;
 
-import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -18,16 +17,16 @@ public class ExifToolOptionsManager {
 	private final String MESSAGE_EDITOR = "MESSAGE_EDITOR";
 	private final String MIME_TYPES_TO_IGNORE = "MIME_TYPES_TO_IGNORE";
 	private final String LINES_TO_IGNORE = "LINES_TO_IGNORE";
+	private final String DEBUG_OUTPUT = "DEBUG_OUTPUT";
 	
 	private final IBurpExtenderCallbacks callbacks;
 	private final ExifToolScannerCheck scanner;
 	private final ExifToolEditorTabFactory tabFactory;
 	private final ExifToolProcess exiftoolProcess;
-	@SuppressWarnings("unused")
-	private final PrintWriter stdout;
+	private final SimpleLogger stdout;
 
 	public ExifToolOptionsManager(IBurpExtenderCallbacks callbacks, ExifToolProcess exiftoolProcess,
-			ExifToolScannerCheck scanner, ExifToolEditorTabFactory tabFactory, PrintWriter stdout) {
+			ExifToolScannerCheck scanner, ExifToolEditorTabFactory tabFactory, SimpleLogger stdout) {
 		this.callbacks = callbacks;
 		this.exiftoolProcess = exiftoolProcess;
 		this.scanner = scanner;
@@ -38,16 +37,20 @@ public class ExifToolOptionsManager {
 	}
 	
 	public boolean isPassiveScanOn() {
-		return Boolean.parseBoolean(loadSettingWithFallback(PASSIVE_SCAN));
+		return loadSettingWithFallback(PASSIVE_SCAN, true);
 	}
 	
 	public boolean isMessageEditorOn() {
-		return Boolean.parseBoolean(loadSettingWithFallback(MESSAGE_EDITOR)); 
+		return loadSettingWithFallback(MESSAGE_EDITOR, true); 
 	}
 	
-	private String loadSettingWithFallback(String optionName) {
+	public boolean isDebugOn() {
+		return loadSettingWithFallback(DEBUG_OUTPUT, false);
+	}
+	
+	private boolean loadSettingWithFallback(String optionName, boolean fallback) {
 		String setting = callbacks.loadExtensionSetting(optionName);
-		return setting != null ? setting : "true";
+		return setting != null ? Boolean.parseBoolean(setting) : fallback;
 	}
 	
 	private Collection<String> getIgnoreSettings(String settingName, Collection<String> fallback) {
@@ -87,6 +90,15 @@ public class ExifToolOptionsManager {
 			callbacks.registerMessageEditorTabFactory(tabFactory);
 		} else {
 			callbacks.removeMessageEditorTabFactory(tabFactory);
+		}
+	}
+	
+	public void changeDebugOutput(boolean on) {
+		callbacks.saveExtensionSetting(DEBUG_OUTPUT, Boolean.toString(on));
+		if (on) {
+			stdout.enableDebug();
+		} else {
+			stdout.disableDebug();
 		}
 	}
 	

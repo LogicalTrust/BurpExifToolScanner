@@ -25,6 +25,10 @@ public class SimpleLogger {
 		return true;
 	}
 	
+	public void debugForce(String message) {
+		originalDebug.println(message);
+	}
+	
 	public void enableDebug() {
 		debug = originalDebug;
 	}

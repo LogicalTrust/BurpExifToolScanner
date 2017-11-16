@@ -138,7 +138,7 @@ public class ExifToolProcess implements IExtensionStateListener {
 		logger.debug("Reading result from exiftool");
 		List<String> result = new ArrayList<>();
 		String line;
-		while ((line = reader.readLine()) != null && logger.debug(line) && !"{ready}".equals(line)) {
+		while ((line = reader.readLine()) != null && logger.debug(line) && !("{ready}".equals(line) || "{ready-}".equals(line))) {
 			if (isAppropriateLine(line)) {
 				result.add(line);
 			}

@@ -42,15 +42,6 @@ public class ExifToolProcess implements IExtensionStateListener {
 		this.logger = stdout;
 		
 		try {
-			process = new ProcessBuilder(new String[] { "exiftool", "-stay_open", "True", "-@", "-" }).start();
-			writer = new PrintWriter(process.getOutputStream());
-			reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-			stdout.debug("Process started");
-		} catch (IOException e) {
-			throw new ExtensionInitException("Cannot run ExifTool process. Do you have exiftool set in your PATH?", e);
-		}
-		
-		try {
 			if (isWindows()) {
 				tempDirectory = Files.createTempDirectory("burpexiftool");
 				setWindowsPermissions(tempDirectory);
@@ -61,6 +52,15 @@ public class ExifToolProcess implements IExtensionStateListener {
 			stdout.debug("Temp directory " + tempDirectory + " created");
 		} catch (IOException e) {
 			throw new ExtensionInitException("Cannot create temporary directory", e);
+		}
+		
+		try {
+			process = runProcess();
+			writer = new PrintWriter(process.getOutputStream());
+			reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			stdout.debug("Process started");
+		} catch (IOException e) {
+			throw new ExtensionInitException("Cannot run ExifTool process", e);
 		}
 	}
 	
@@ -161,7 +161,22 @@ public class ExifToolProcess implements IExtensionStateListener {
 		file.setWritable(true, true);
 		file.setExecutable(false);
 	}
-
+	
+	private Process runProcess() throws IOException {
+		try {
+			Process process = new ProcessBuilder(prepareProcessParams("exiftool")).start();
+			return process;
+		} catch (IOException e) {
+			logger.debug("exiftool not found in PATH");
+			logger.debug("Using embedded ExifTool");
+		}
+		return null;
+	}
+	
+	private String[] prepareProcessParams(String executable) {
+		return new String[] { executable, "-stay_open", "True", "-@", "-" };
+	}
+	
 	@Override
 	public void extensionUnloaded() {
 		process.destroy();

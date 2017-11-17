@@ -2,6 +2,7 @@ package net.logicaltrust;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,6 +11,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -39,7 +41,6 @@ public class ExifToolProcess implements IExtensionStateListener {
 	private final Path tempDirectory;
 	private final SimpleLogger logger;
 	private Process process;
-	private Path extractedBinary;
 
 	public ExifToolProcess(IExtensionHelpers helpers, SimpleLogger stdout) throws ExtensionInitException {
 		this.helpers = helpers;
@@ -63,7 +64,7 @@ public class ExifToolProcess implements IExtensionStateListener {
 			reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 			stdout.debugForce("Process started");
 		} catch (ExtensionInitException e) {
-			deleteTempDir();
+			deleteDir(tempDirectory.toFile());
 			throw e;
 		}
 	}
@@ -183,24 +184,34 @@ public class ExifToolProcess implements IExtensionStateListener {
 			return process;
 		} catch (IOException e) {
 			logger.debugForce("'exiftool' not found in PATH.");
-			if (isWindows()) {
-				try {
-					extractedBinary = extractBinary();
-					logger.debugForce("Extracting exiftool to " + extractedBinary);
-					Process process = new ProcessBuilder(prepareProcessParams(extractedBinary.toString())).start();
-					return process;
-				} catch (IOException e1) {
-					throw new ExtensionInitException("Cannot run or extract embedded exiftool. Do you have 'exiftool' set in PATH?", e);
-				} 
-			} else {
-				throw new ExtensionInitException("Cannot run. Do you have 'exiftool' set in PATH?", e);
-			}
+			try {
+				Path extractedBinary = extractBinary();
+				logger.debugForce("Extracting exiftool to " + extractedBinary);
+				Process process = new ProcessBuilder(prepareProcessParams(extractedBinary.toString())).start();
+				return process;
+			} catch (IOException | InterruptedException e1) {
+				throw new ExtensionInitException("Cannot run or extract embedded exiftool. Do you have 'exiftool' set in PATH?", e);
+			} 
 		}
 	}
 	
-	private Path extractBinary() throws IOException  {
-		InputStream resourceAsStream = getClass().getResourceAsStream("/exiftool.exe");
-		Path exifToolBinary = createTempFile("exiftool", ".exe", null);
+	private Path extractBinary() throws IOException, InterruptedException, ExtensionInitException  {
+		if (isWindows()) {
+			return extractResource("/exiftool.exe", ".exe");
+		} else {
+			Path archive = extractResource("/Image-ExifTool-10.67.tar.gz", ".tar.gz");
+			Process process = new ProcessBuilder("tar", "xf", archive.toString(), "-C", tempDirectory.toString()).start();
+			process.waitFor(30, TimeUnit.SECONDS);
+			if (process.exitValue() != 0) {
+				throw new ExtensionInitException("Failed to extract tar.gz archive");
+			}
+			return tempDirectory.resolve(Paths.get("Image-ExifTool-10.67", "exiftool"));
+		}
+	}
+
+	private Path extractResource(String resource, String ext) throws IOException, FileNotFoundException {
+		InputStream resourceAsStream = getClass().getResourceAsStream(resource);
+		Path exifToolBinary = createTempFile("exiftool", ext, TEMP_FILE_PERMISSIONS);
 		FileOutputStream fos = null;
 		try {
 			fos = new FileOutputStream(exifToolBinary.toFile());
@@ -222,28 +233,33 @@ public class ExifToolProcess implements IExtensionStateListener {
 	private String[] prepareProcessParams(String executable) {
 		return new String[] { executable, "-stay_open", "True", "-@", "-" };
 	}
-	
-	private void deleteTempDir() {
-		if (extractedBinary != null) {
-			try {
-				logger.debugForce("Deleting " + extractedBinary);
-				Files.deleteIfExists(extractedBinary);
-			} catch (IOException e) {
-				e.printStackTrace(logger.getStderr());
+
+	private void deleteDir(File dir) {
+		File[] files = dir.listFiles();
+		if (files != null) {
+			for (File f : files) {
+				if (f.isDirectory()) {
+					deleteDir(f);
+				} else {
+					deleteFile(f);
+				}
 			}
 		}
-		try {
-			logger.debugForce("Deleting " + tempDirectory);
-			Files.deleteIfExists(tempDirectory);
-		} catch (IOException e) {
-			e.printStackTrace(logger.getStderr());
+		logger.debugForce("Deleting dir " + dir);
+		deleteFile(dir);
+	}
+	
+	private void deleteFile(File f) {
+		boolean delete = f.delete();
+		if (!delete) {
+			logger.debugForce("Cannot delete " + f);
 		}
 	}
 	
 	@Override
 	public void extensionUnloaded() {
 		exitExifTool();
-		
+
 		try {
 			Thread.sleep(5000);
 		} catch (InterruptedException e1) {
@@ -252,7 +268,8 @@ public class ExifToolProcess implements IExtensionStateListener {
 		
 		try {
 			process.waitFor(30, TimeUnit.SECONDS);
-			deleteTempDir();
+			logger.debugForce("Process ended with value " + process.exitValue());
+			deleteDir(tempDirectory.toFile());
 		} catch (InterruptedException e1) {
 			e1.printStackTrace(logger.getStderr());
 		}

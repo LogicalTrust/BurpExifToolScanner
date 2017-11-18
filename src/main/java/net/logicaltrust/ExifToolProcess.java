@@ -87,7 +87,14 @@ public class ExifToolProcess implements IExtensionStateListener {
 	
 	public boolean canReadMetadata(byte[] response) {
 		IResponseInfo responseInfo = helpers.analyzeResponse(response);
+		if (isBodyEmpty(response, responseInfo)) {
+			return false;
+		}
 		return isMimeTypeAppropriate(responseInfo);
+	}
+
+	private boolean isBodyEmpty(byte[] response, IResponseInfo responseInfo) {
+		return responseInfo.getBodyOffset() == response.length;
 	}
 	
 	private List<String> readMetadata(byte[] response, String exifToolParams) throws IOException {

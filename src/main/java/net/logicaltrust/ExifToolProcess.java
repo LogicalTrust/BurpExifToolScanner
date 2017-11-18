@@ -259,13 +259,6 @@ public class ExifToolProcess implements IExtensionStateListener {
 	@Override
 	public void extensionUnloaded() {
 		exitExifTool();
-
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e1) {
-			e1.printStackTrace();
-		}
-		
 		try {
 			process.waitFor(30, TimeUnit.SECONDS);
 			logger.debugForce("Process ended with value " + process.exitValue());

@@ -4,13 +4,17 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTable;
@@ -21,6 +25,7 @@ import javax.swing.border.TitledBorder;
 public class ExifToolTable extends JPanel {
 
 	private static final long serialVersionUID = 1L;
+	private final ExifToolTableModel model;
 
 	public ExifToolTable(String title, String tooltip, Collection<String> values, Collection<String> defaultValues, 
 			Consumer<Collection<String>> updateValues, PrintWriter stderr) {
@@ -29,7 +34,7 @@ public class ExifToolTable extends JPanel {
 		this.setToolTipText(tooltip);
 		this.setLayout(new BorderLayout(0, 0));
 		
-		ExifToolTableModel model = new ExifToolTableModel(values, stderr);
+		model = new ExifToolTableModel(values, stderr);
 		
 		JPanel buttonPanel = new JPanel();
 		this.add(buttonPanel, BorderLayout.WEST);
@@ -37,7 +42,7 @@ public class ExifToolTable extends JPanel {
 		buttonPanelLayout.columnWidths = new int[] {50};
 		buttonPanelLayout.rowHeights = new int[] {0, 0, 0, 25};
 		buttonPanelLayout.columnWeights = new double[]{0.0};
-		buttonPanelLayout.rowWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
+		buttonPanelLayout.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		buttonPanel.setLayout(buttonPanelLayout);
 		
 		JButton addButton = new JButton("Add");
@@ -64,11 +69,7 @@ public class ExifToolTable extends JPanel {
 		
 		model.addTableModelListener(e -> {
 			undoButton.setEnabled(model.canUndo());
-			int c = model.getRowCount();
-			Set<String> modelValues = new LinkedHashSet<>(c);
-			for (int i = 0; i < c; i++) {
-				modelValues.add((String) model.getValueAt(i, 0)); 
-			}
+			Set<String> modelValues = getModelValues();
 			updateValues.accept(modelValues);
 		});
 		
@@ -82,13 +83,54 @@ public class ExifToolTable extends JPanel {
 			}
 		});
 		
-		addButton.addActionListener((e) -> {
+		addButton.addActionListener(e -> {
 			String value = JOptionPane.showInputDialog("Insert value");
 			if (value != null) {
 				model.addRow(new Object[] { value });
 				model.fireTableDataChanged();
 			}
 		});
+		
+		JButton loadFromFileButton = new JButton("Load...");
+		buttonPanel.add(loadFromFileButton, createTableButtonConstraints(4));
+		loadFromFileButton.addActionListener(e -> {
+			JFileChooser fileChooser = new JFileChooser();
+			int dialog = fileChooser.showOpenDialog(null);
+			if (dialog == JFileChooser.APPROVE_OPTION) {
+				File file = fileChooser.getSelectedFile();
+				try {
+					model.addRows(Files.lines(file.toPath()));
+					model.fireTableDataChanged();
+				} catch (IOException e1) {
+					e1.printStackTrace(stderr);
+				}
+			}
+		});
+		
+		JButton saveToFile = new JButton("Save...");
+		buttonPanel.add(saveToFile, createTableButtonConstraints(5));
+		saveToFile.addActionListener(e -> {
+			JFileChooser fileChooser = new JFileChooser();
+			int dialog = fileChooser.showSaveDialog(null);
+			if (dialog == JFileChooser.APPROVE_OPTION) {
+				File file = fileChooser.getSelectedFile();
+				try {
+					Files.write(file.toPath(), getModelValues());
+				} catch (IOException e1) {
+					e1.printStackTrace(stderr);
+				}
+			}
+		});
+		
+	}
+
+	private Set<String> getModelValues() {
+		int c = model.getRowCount();
+		Set<String> modelValues = new LinkedHashSet<>(c);
+		for (int i = 0; i < c; i++) {
+			modelValues.add((String) model.getValueAt(i, 0)); 
+		}
+		return modelValues;
 	}
 	
 	private GridBagConstraints createTableButtonConstraints(int index) {

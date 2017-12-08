@@ -38,7 +38,6 @@ public class ExifToolOptionsManager {
 		exiftoolProcess.setTypesToIgnore(getMimeTypesToIgnore());
 		exiftoolProcess.setLinesToIgnore(getLinesToIgnore());
 		fullResultInMessageEditor = loadSettingWithFallback(FULL_RESULT_IN_MESSAGE_EDITOR, false);
-		stdout.debug(FULL_RESULT_IN_MESSAGE_EDITOR + " from saved settings " + fullResultInMessageEditor);
 	}
 	
 	public boolean isPassiveScanOn() {

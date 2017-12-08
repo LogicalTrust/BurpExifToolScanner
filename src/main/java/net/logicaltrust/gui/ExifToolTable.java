@@ -17,6 +17,7 @@ import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.border.LineBorder;
@@ -66,6 +67,10 @@ public class ExifToolTable extends JPanel {
 		JTable table = new JTable();
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		this.add(table, BorderLayout.CENTER);
+		
+		JScrollPane scroll = new JScrollPane(table);
+		scroll.setVisible(true);
+		this.add(scroll);
 		
 		model.addTableModelListener(e -> {
 			undoButton.setEnabled(model.canUndo());

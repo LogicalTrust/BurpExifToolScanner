@@ -79,12 +79,12 @@ public class ExifToolProcess implements IExtensionStateListener {
 		this.linesToIgnore = linesToIgnore.stream().map(line -> line + ":").collect(Collectors.toSet());
 	}
 	
-	public List<String> readMetadataHtml(byte[] response) throws IOException {
-		return readMetadata(response, "-m\n-S\n-E\n-sort\n", false);
+	public List<List<String>> readMetadataHtml(byte[] response, boolean reversePdf) throws IOException {
+		return readMetadata(response, "-m\n-S\n-E\n-sort\n", false, reversePdf);
 	}
 	
-	public List<String> readMetadata(byte[] response, boolean displayFullResult) throws IOException {
-		return readMetadata(response, "-m\n-S\n-sort\n", displayFullResult);
+	public List<List<String>> readMetadata(byte[] response, boolean displayFullResult, boolean reversePdf) throws IOException {
+		return readMetadata(response, "-m\n-S\n-sort\n", displayFullResult, reversePdf);
 	}
 	
 	public boolean canReadMetadata(byte[] response) {
@@ -99,7 +99,7 @@ public class ExifToolProcess implements IExtensionStateListener {
 		return responseInfo.getBodyOffset() == response.length;
 	}
 	
-	private List<String> readMetadata(byte[] response, String exifToolParams, boolean displayFullResult) throws IOException {
+	private List<List<String>> readMetadata(byte[] response, String exifToolParams, boolean displayFullResult, boolean reversePdf) throws IOException {
 		logger.debug("Reading metadata from response");
 		IResponseInfo responseInfo = helpers.analyzeResponse(response);
 		if (!isMimeTypeAppropriate(responseInfo)) {
@@ -108,15 +108,38 @@ public class ExifToolProcess implements IExtensionStateListener {
 		}
 		
 		Path tmp = writeToTempFile(responseInfo, response);
-		List<String> result;
+		List<List<String>> result = new ArrayList<>();
 		synchronized (this) {
 			notifyExifTool(tmp, exifToolParams);
-			result = readResult(displayFullResult);
+			result.add(readResult(displayFullResult));
+
+			if (reversePdf && isResultPDF(result)) {
+				notifyExifTool(tmp, "-PDF-update:all=\n");
+				readResult(displayFullResult);
+				notifyExifTool(tmp, exifToolParams);
+				List<String> pdfResult = readResult(displayFullResult);
+				if (!isResultPDFTheSame(result, pdfResult)) {
+					result.add(pdfResult);
+					logger.debug("Detected reversed PDF");
+				} else {
+					logger.debug("Reversed PDF not detected");
+				}
+			}
 		}
+
 		logger.debug("Deleting temp file " + tmp);
 		Files.deleteIfExists(tmp);
-		
+
 		return result;
+	}
+
+	private boolean isResultPDF(List<List<String>> result) {
+		return result.get(ExifToolResultEnum.NORMAL.getIndex()).contains("FileType: PDF");
+	}
+
+	private boolean isResultPDFTheSame(List<List<String>> result, List<String> reversePdf) {
+		List<String> normal = result.get(ExifToolResultEnum.NORMAL.getIndex());
+		return normal.equals(reversePdf);
 	}
 	
 	private boolean isMimeTypeAppropriate(IResponseInfo responseInfo) {
